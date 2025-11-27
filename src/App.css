@@ -188,6 +188,25 @@ body,
   visibility: visible !important;
 }
 
+/* Grouped control buttons: stack vertically when multiple controls are present */
+.control-button-group {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 99999 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* use root spacing if available */
+}
+
+/* When control-buttons are placed inside a group, they should not be fixed individually */
+.control-button.stacked {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin: 0;
+}
+
 @media (max-width: 600px) {
   .control-button {
     left: 10px;
