@@ -29,9 +29,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await authService.login({ email: credentials.email, password: credentials.password });
       const data = res || {};
-      const t = data.token || data.Token || null;
-      const rt = data.refresh_token || data.RefreshToken || data.refreshToken || null;
-      const id = data.id || data.ID || null;
+      const t = data.access_token || null;
+      const rt = data.refresh_token || null;
+      const id = data.id || null;
       const name = data.name || null;
       const email = data.email || null;
       const phone_number = data.phone_number || null;
@@ -66,8 +66,8 @@ export const AuthProvider = ({ children }) => {
       if (!refreshToken) throw new Error("no refresh token");
       const res = await authService.refreshToken(refreshToken);
       const data = res || {};
-      const t = data.token || data.Token || null;
-      const rt = data.refresh_token || data.RefreshToken || data.refreshToken || null;
+      const t = data.access_token || null;
+      const rt = data.refresh_token || null;
       if (!t) throw new Error("refresh failed: no token");
       setToken(t);
       if (rt) setRefreshToken(rt);

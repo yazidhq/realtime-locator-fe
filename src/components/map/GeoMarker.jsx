@@ -176,7 +176,7 @@ const GeoMarker = () => {
       ref={markerRef}
       center={[display.latitude, display.longitude]}
       radius={5}
-      pathOptions={{ color: "#000000ff", weight: 1.5, fillColor: "#ff2d55", fillOpacity: 1 }}
+      pathOptions={{ color: "#fff", weight: 2, fillColor: "#1e3a5f", fillOpacity: 1 }}
     />
   );
 };

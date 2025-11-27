@@ -20,7 +20,7 @@ const Logout = () => {
       {success && <div className="text-success mb-2">{success}</div>}
       <form onSubmit={submitLogout}>
         <div className="d-grid gap-2 mt-4">
-          <button className="btn btn-outline-dark" type="submit" disabled={loading}>
+          <button className="btn btn-primary" type="submit" disabled={loading}>
             {loading ? "Please wait..." : "Logout"}
           </button>
         </div>
