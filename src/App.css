@@ -1,6 +1,6 @@
 /* Global app styles and responsive rules for panel and buttons */
 :root {
-  --panel-width: 320px;
+  --panel-width: 450px;
   --panel-gap-right: 45px;
   --panel-padding: 10px;
   --panel-top: 0px;
