@@ -4,6 +4,7 @@ import MasterPanel from "../components/panel/MasterPanel";
 import { usePanelToggle } from "../hooks/usePanelToggle";
 import ControlButton from "../components/button/ControlButton";
 import { useEffect } from "react";
+import { RefreshCcw } from "lucide-react";
 
 const Home = () => {
   const { activePanel, togglePanel } = usePanelToggle(false, 100);
@@ -41,7 +42,7 @@ const Home = () => {
           window.location.reload();
         }}
         title="Refresh page"
-        icon={"⟳︎"}
+        icon={<RefreshCcw size={"15px"} />}
       />
 
       <MasterPanel activePanel={activePanel} togglePanel={togglePanel} />
