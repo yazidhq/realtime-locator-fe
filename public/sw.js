@@ -26,38 +26,38 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Simple fetch handler: try cache, then network, cache successful GETs
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.match(req).then((cached) => {
       if (cached) return cached;
-      return fetch(event.request)
+
+      return fetch(req)
         .then((response) => {
-          // only cache successful responses
-          if (!response || response.status !== 200 || response.type !== "basic") return response;
-          const responseToCache = response.clone();
-          try {
-            const reqUrl = new URL(event.request.url);
-            // only cache http/https same-origin requests
-            if (reqUrl.protocol.startsWith("http") && reqUrl.origin === self.location.origin) {
-              caches
-                .open(CACHE_NAME)
-                .then((cache) => cache.put(event.request, responseToCache))
-                .catch((err) => {
-                  console.warn("SW: cache.put failed for", event.request.url, err);
-                });
-            }
-          } catch (err) {
-            // invalid URL or unsupported scheme (e.g. chrome-extension://)
-            console.warn("SW: skip caching request", event.request.url, err);
+          if (!response || response.status !== 200 || response.type !== "basic") {
+            return response;
           }
+
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, responseToCache);
+          });
+
           return response;
         })
         .catch(() => {
-          // fallback: if request is navigation, return the cached app shell
-          if (event.request.mode === "navigate") return caches.match("/index.html");
+          if (req.mode === "navigate") {
+            return caches.match("/index.html");
+          }
         });
     })
   );
