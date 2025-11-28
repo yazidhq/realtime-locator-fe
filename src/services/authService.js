@@ -1,51 +1,23 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import request from "./index.js";
 
-async function request(path, opts = {}) {
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-    ...opts,
-  });
+export const authService = {
+  login: ({ email, password }) =>
+    request(`/api/auth/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
 
-  const bodyText = await res.text();
-  let body = null;
-  try {
-    body = bodyText ? JSON.parse(bodyText) : null;
-  } catch {
-    body = bodyText;
-  }
+  register: (payload) =>
+    request(`/api/auth/register`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
-  if (!res.ok) {
-    const message = (body && (body.message || body.error || JSON.stringify(body))) || res.statusText;
-    throw new Error(message);
-  }
+  refreshToken: (refresh_token) =>
+    request(`/api/auth/refresh_token`, {
+      method: "POST",
+      body: JSON.stringify({ refresh_token }),
+    }),
+};
 
-  return body;
-}
-
-export async function login({ email, password }) {
-  const body = await request(`/api/auth/login`, {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  const payload = body?.data || body;
-  return payload;
-}
-
-export async function register(payload) {
-  const body = await request(`/api/auth/register`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return body?.data || body;
-}
-
-export async function refreshToken(refresh_token) {
-  const body = await request(`/api/auth/refresh_token`, {
-    method: "POST",
-    body: JSON.stringify({ refresh_token }),
-  });
-  return body?.data || body;
-}
-
-export default { login, register, refreshToken };
+export default authService;

@@ -1,0 +1,105 @@
+import { useState, useCallback } from "react";
+import { AuthContext } from "./authContext";
+import authService from "../../services/authService";
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [token, setToken] = useState(() => localStorage.getItem("authToken") || null);
+  const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem("authRefreshToken") || null);
+  const isAuthenticated = !!token;
+
+  const handleRegister = async (payload) => {
+    try {
+      const data = await authService.register(payload);
+      return { ok: true, data };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err) };
+    }
+  };
+
+  const handleLogin = async ({ email, password }) => {
+    try {
+      const data = await authService.login({ email, password });
+
+      const access = data.access_token;
+      if (!access) throw new Error("Token not provided by server");
+
+      const userObj = {
+        id: data.id ?? null,
+        name: data.name ?? null,
+        email: data.email ?? null,
+        phone_number: data.phone_number ?? null,
+      };
+
+      setToken(access);
+      setRefreshToken(data.refresh_token || null);
+      setUser(userObj);
+
+      localStorage.setItem("authToken", access);
+      if (data.refresh_token) localStorage.setItem("authRefreshToken", data.refresh_token);
+      localStorage.setItem("authUser", JSON.stringify(userObj));
+
+      return { ok: true, user: userObj };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err) };
+    }
+  };
+
+  const handleLogout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setRefreshToken(null);
+
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("authUser");
+    localStorage.removeItem("authRefreshToken");
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!refreshToken) return { ok: false, error: "no refresh token" };
+
+    try {
+      const data = await authService.refreshToken(refreshToken);
+
+      const newAccess = data.access_token;
+      if (!newAccess) throw new Error("Refresh failed: no token received");
+
+      setToken(newAccess);
+      localStorage.setItem("authToken", newAccess);
+
+      if (data.refresh_token) {
+        setRefreshToken(data.refresh_token);
+        localStorage.setItem("authRefreshToken", data.refresh_token);
+      }
+
+      return { ok: true };
+    } catch (err) {
+      handleLogout();
+      return { ok: false, error: err.message || String(err) };
+    }
+  }, [refreshToken, handleLogout]);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        isAuthenticated,
+        handleRegister,
+        handleLogin,
+        handleLogout,
+        refresh,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};

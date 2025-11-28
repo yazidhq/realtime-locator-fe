@@ -1,82 +1,36 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+import request from "./index.js";
 
-async function request(path, opts = {}) {
-  const url = `${API_BASE}${path}`;
-  const token = localStorage.getItem("authToken");
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token}` : undefined,
-      ...(opts.headers || {}),
-    },
-    ...opts,
-  });
+export const userService = {
+  create: (payload) =>
+    request(`/api/user/`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
-  const bodyText = await res.text();
-  let body = null;
-  try {
-    body = bodyText ? JSON.parse(bodyText) : null;
-  } catch {
-    body = bodyText;
-  }
+  update: (id, payload) =>
+    request(`/api/user/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
 
-  if (!res.ok) {
-    const message = (body && (body.message || body.error || JSON.stringify(body))) || res.statusText;
-    throw new Error(message);
-  }
+  remove: (id) => {
+    if (!id) throw new Error("ID is required for delete");
+    return request(`/api/user/${id}`, { method: "DELETE" });
+  },
 
-  return body;
-}
+  getAll: () => request(`/api/user/`, { method: "GET" }),
 
-export async function create(payload) {
-  const body = await request(`/api/user/`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  return body?.data || body;
-}
+  getById: (id) => request(`/api/user/${id}`, { method: "GET" }),
 
-export async function update(id, payload) {
-  const body = await request(`/api/user/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-  return body?.data || body;
-}
+  getAllFiltered: (filters = {}, ops = {}) => {
+    const params = new URLSearchParams();
 
-export async function remove(id) {
-  if (!id) throw new Error("ID is required for delete");
-  const body = await request(`/api/user/${id}`, {
-    method: "DELETE",
-  });
-  return body?.data || body;
-}
+    Object.entries(filters).forEach(([k, v]) => params.append(`filter[${k}]`, v));
+    Object.entries(ops).forEach(([k, v]) => params.append(`op[${k}]`, v));
 
-export async function getAll() {
-  const body = await request(`/api/user/`, {
-    method: "GET",
-  });
-  return body?.data || body;
-}
+    const qs = params.toString();
+    return request(`/api/user/${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+};
 
-export async function getAllFiltered(filters = {}, ops = {}) {
-  const params = new URLSearchParams();
-  Object.keys(filters || {}).forEach((k) => params.append(`filter[${k}]`, filters[k]));
-  Object.keys(ops || {}).forEach((k) => params.append(`op[${k}]`, ops[k]));
-
-  const query = params.toString();
-  const path = query ? `/api/user/?${query}` : `/api/user/`;
-  const body = await request(path, {
-    method: "GET",
-  });
-  return body?.data || body;
-}
-
-export async function getById(id) {
-  const body = await request(`/api/user/${id}`, {
-    method: "GET",
-  });
-  return body?.data || body;
-}
-
-export default { create, update, remove, getAll, getById, getAllFiltered };
+export default userService;

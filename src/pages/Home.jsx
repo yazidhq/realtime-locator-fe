@@ -1,10 +1,10 @@
 import LeafletMap from "../components/map/LeafletMap";
 import themes from "../assets/map-themes";
-import MasterPanel from "../components/panel/MasterPanel";
 import { usePanelToggle } from "../hooks/usePanelToggle";
 import ControlButton from "../components/button/ControlButton";
 import { useEffect, useRef } from "react";
 import { RefreshCcw, Crosshair } from "lucide-react";
+import MasterPanel from "../components/template/panel/MasterPanel";
 
 const Home = () => {
   const { activePanel, togglePanel } = usePanelToggle(false, 100);
