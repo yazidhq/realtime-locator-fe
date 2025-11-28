@@ -15,14 +15,23 @@ function getAuthHeader() {
 }
 
 async function request(path, options = {}) {
-  const url = `${API_BASE}${path}`;
+  const params = options.params;
+  let url = `${API_BASE}${path}`;
+
+  if (params) {
+    const qs = params instanceof URLSearchParams ? params.toString() : new URLSearchParams(params).toString();
+    if (qs) url += (url.includes("?") ? "&" : "?") + qs;
+  }
+
+  const fetchOptions = { ...options };
+  delete fetchOptions.params;
 
   const res = await fetch(url, {
-    ...options,
+    ...fetchOptions,
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeader(),
-      ...(options.headers || {}),
+      ...(fetchOptions.headers || {}),
     },
   });
 
