@@ -29,9 +29,9 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const handleGetAll = async () => {
+  const handleGetAll = async (params) => {
     try {
-      const data = await userService.getAll();
+      const data = await userService.getAll(params);
       return { ok: true, data };
     } catch (err) {
       return { ok: false, error: err.message || String(err) };
@@ -47,15 +47,6 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  const handleGetAllFiltered = async (filters = {}, ops = {}) => {
-    try {
-      const data = await userService.getAllFiltered(filters, ops);
-      return { ok: true, data };
-    } catch (err) {
-      return { ok: false, error: err.message || String(err) };
-    }
-  };
-
   return (
     <UserContext.Provider
       value={{
@@ -64,7 +55,6 @@ export const UserProvider = ({ children }) => {
         handleRemove,
         handleGetAll,
         handleGetById,
-        handleGetAllFiltered,
       }}
     >
       {children}

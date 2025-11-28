@@ -18,7 +18,7 @@ export const userService = {
     return request(`/api/user/${id}`, { method: "DELETE" });
   },
 
-  getAll: () => request(`/api/user/`, { method: "GET" }),
+  getAll: (params) => request(`/api/user/`, { method: "GET", params: params }),
 
   getById: (id) => request(`/api/user/${id}`, { method: "GET" }),
 
