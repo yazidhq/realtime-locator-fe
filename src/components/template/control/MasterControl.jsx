@@ -24,7 +24,7 @@ const MasterControl = ({ mapHandleRef, mapObjRef }) => {
         }}
         className="stacked"
         title="Total Refresh"
-        icon={<RefreshCcw size="15px" />}
+        icon={<RefreshCcw size="20px" />}
       />
 
       <ControlButton
@@ -67,7 +67,7 @@ const MasterControl = ({ mapHandleRef, mapObjRef }) => {
         }}
         className="stacked"
         title="Go to current location"
-        icon={<Crosshair size="15px" />}
+        icon={<Crosshair size="20px" />}
       />
     </div>
   );
