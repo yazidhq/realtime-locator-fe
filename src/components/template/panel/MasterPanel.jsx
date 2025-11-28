@@ -3,13 +3,16 @@ import PanelButton from "../../button/PanelButton";
 import AuthForm from "../../auth/AuthForm";
 import SettingPanel from "../../panel/SettingPanel";
 import ProfilePanel from "../../panel/ProfilePanel";
+import { Settings, User, Users } from "lucide-react";
+import UsersPanel from "../../panel/UsersPanel";
 
 const MasterPanel = ({ activePanel, togglePanel }) => {
   const { isAuthenticated } = useAuth();
 
   const panelButtons = [
-    { id: "profile", icon: "👤︎" },
-    { id: "setting", icon: "⚙︎" },
+    { id: "profile", icon: <User /> },
+    { id: "users", icon: <Users /> },
+    { id: "setting", icon: <Settings /> },
   ];
 
   return (
@@ -45,13 +48,19 @@ const MasterPanel = ({ activePanel, togglePanel }) => {
       <div className={`panel-template ${activePanel ? "open" : "closed"}`}>
         <div className="panel-body">
           {activePanel === "profile" && (
-            <div className="p-3" style={{ color: "#1e3a5f" }}>
+            <div className="p-4" style={{ color: "#1e3a5f" }}>
               {isAuthenticated ? <ProfilePanel /> : <AuthForm />}
             </div>
           )}
 
+          {activePanel === "users" && (
+            <div className="p-4" style={{ color: "#1e3a5f" }}>
+              <UsersPanel />
+            </div>
+          )}
+
           {activePanel === "setting" && (
-            <div className="p-3" style={{ color: "#1e3a5f" }}>
+            <div className="p-4" style={{ color: "#1e3a5f" }}>
               <SettingPanel />
             </div>
           )}
