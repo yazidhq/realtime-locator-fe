@@ -50,7 +50,7 @@ const Home = () => {
             window.location.reload();
           }}
           className="stacked"
-          title="Refresh page"
+          title="Total Refresh"
           icon={<RefreshCcw size={"15px"} />}
         />
 
