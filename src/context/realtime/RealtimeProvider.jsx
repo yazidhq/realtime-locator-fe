@@ -15,7 +15,29 @@ export const RealtimeProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [onlineMap, setOnlineMap] = useState(() => ({}));
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const [locationsByUserId, setLocationsByUserId] = useState(() => ({}));
   const onlineUsersUpdateRef = useRef(null);
+
+  const sendMyLocation = (payload) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+
+    const msg = {
+      type: "user_location",
+      user_id: user?.id,
+      latitude: payload?.latitude,
+      longitude: payload?.longitude,
+      ts: payload?.ts ?? Date.now(),
+    };
+
+    try {
+      ws.send(JSON.stringify(msg));
+      return true;
+    } catch (e) {
+      console.warn("realtime: sendMyLocation failed", e);
+      return false;
+    }
+  };
 
   useEffect(() => {
     // If no token, ensure socket closed and state cleared
@@ -69,7 +91,7 @@ export const RealtimeProvider = ({ children }) => {
           }
           // Optionally notify server of presence (uncomment if backend expects client to send)
           try {
-            // currentWs.send(JSON.stringify({ type: "user_status", user_id: user.id, online: true }));
+            currentWs.send(JSON.stringify({ type: "user_status", user_id: user.id, online: true }));
           } catch (e) {
             console.warn("send presence failed", e);
           }
@@ -108,6 +130,26 @@ export const RealtimeProvider = ({ children }) => {
               const ids = new Set(data.user_ids.map(id => String(id)));
               console.log("realtime: received online users list", Array.from(ids));
               setOnlineUserIds(ids);
+            }
+
+            // Handle location updates broadcasted by server
+            // Backend protocol: type = 'user_location'
+            // Keep compatibility with earlier 'location_update' name.
+            if (data && (data.type === "user_location" || data.type === "location_update")) {
+              const uid = String(data.user_id || "");
+              const lat = Number(data.latitude ?? data.lat);
+              const lng = Number(data.longitude ?? data.lng);
+              if (uid && Number.isFinite(lat) && Number.isFinite(lng)) {
+                setLocationsByUserId((prev) => {
+                  const next = { ...prev };
+                  next[uid] = {
+                    latitude: lat,
+                    longitude: lng,
+                    updatedAt: Date.now(),
+                  };
+                  return next;
+                });
+              }
             }
           } catch (e) {
             console.warn(e);
@@ -196,6 +238,8 @@ export const RealtimeProvider = ({ children }) => {
     isConnected,
     onlineMap,
     onlineUserIds,
+    locationsByUserId,
+    sendMyLocation,
     getOnline: (userId) => !!onlineMap[userId],
     setOnlineUsersRefreshCallback: (callback) => {
       onlineUsersUpdateRef.current = callback;

@@ -2,6 +2,7 @@ import React, { useRef, useImperativeHandle, forwardRef } from "react";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import GeoMarker from "./GeoMarker";
+import OnlineUsersMarkers from "./OnlineUsersMarkers";
 
 const LeafletMap = forwardRef(({ tileUrl, onMapReady }, ref) => {
   const mapRef = useRef(null);
@@ -43,6 +44,7 @@ const LeafletMap = forwardRef(({ tileUrl, onMapReady }, ref) => {
     >
       <TileLayer url={tileUrl} />
       <GeoMarker />
+      <OnlineUsersMarkers />
     </MapContainer>
   );
 });

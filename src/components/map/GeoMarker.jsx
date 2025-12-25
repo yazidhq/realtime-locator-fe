@@ -1,13 +1,17 @@
 import { useGeolocated } from "react-geolocated";
 import { useEffect, useRef, useState } from "react";
 import { CircleMarker, useMap } from "react-leaflet";
+import { useRealtime } from "../../context/realtime/realtimeContext";
 
 const GeoMarker = () => {
+  const { sendMyLocation } = useRealtime();
   const { coords } = useGeolocated({
     positionOptions: { enableHighAccuracy: true },
     watchPosition: true,
     userDecisionTimeout: 5000,
   });
+
+  const lastBroadcastAtRef = useRef(0);
 
   const map = useMap();
 
@@ -99,6 +103,24 @@ const GeoMarker = () => {
 
   const display = polledCoords || coords;
 
+  // Broadcast my location to other users (server should rebroadcast)
+  useEffect(() => {
+    if (!display || !sendMyLocation) return;
+    const latitude = Number(display.latitude);
+    const longitude = Number(display.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    const now = Date.now();
+    if (now - lastBroadcastAtRef.current < 5000) return;
+    lastBroadcastAtRef.current = now;
+
+    sendMyLocation({
+      latitude,
+      longitude,
+      ts: now,
+    });
+  }, [display, sendMyLocation]);
+
   // Animate marker smoothly between updates. We update the Leaflet layer directly via ref
   // to avoid heavy React re-renders every animation frame. Hooks must be called before early returns.
   useEffect(() => {
@@ -176,7 +198,7 @@ const GeoMarker = () => {
       ref={markerRef}
       center={[display.latitude, display.longitude]}
       radius={5}
-      pathOptions={{ color: "#fff", weight: 2, fillColor: "#1e3a5f", fillOpacity: 1 }}
+      pathOptions={{ color: "#fff", weight: 2, fillColor: "#dc3545", fillOpacity: 1 }}
     />
   );
 };
