@@ -18,6 +18,11 @@ export const authService = {
       method: "POST",
       body: JSON.stringify({ refresh_token }),
     }),
+
+  logout: () =>
+    request(`/api/auth/logout`, {
+      method: "POST",
+    }),
 };
 
 export default authService;

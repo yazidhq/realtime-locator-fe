@@ -53,14 +53,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleLogout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    setRefreshToken(null);
+  const handleLogout = useCallback(async () => {
+    // Call backend logout first so it can ForceOffline using userID from token context.
+    // Even if it fails (network, server down), still clear local auth state.
+    try {
+      await authService.logout();
+    } catch (err) {
+      // ignore and proceed with local logout
+      console.warn("logout api failed", err);
+    } finally {
+      setToken(null);
+      setUser(null);
+      setRefreshToken(null);
 
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
-    localStorage.removeItem("authRefreshToken");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("authRefreshToken");
+    }
+
+    return { ok: true };
   }, []);
 
   const refresh = useCallback(async () => {
