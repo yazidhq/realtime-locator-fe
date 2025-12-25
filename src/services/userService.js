@@ -31,6 +31,8 @@ export const userService = {
     const qs = params.toString();
     return request(`/api/user/${qs ? `?${qs}` : ""}`, { method: "GET" });
   },
+
+  getOnlineList: () => request(`/api/users/online/list`, { method: "GET" }),
 };
 
 export default userService;
