@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MapPin } from "lucide-react";
 import { useAuth } from "../../context/auth/authContext";
 import { useRealtime } from "../../context/realtime/realtimeContext";
 import { useLocation } from "../../context/location/locationContext";
@@ -85,6 +86,26 @@ const ProfilePanel = () => {
       return tb - ta;
     });
   }, [history]);
+
+  const formatDateId = (dateStr) => {
+    const m = /^([0-3]\d)-([0-1]\d)-(\d{4})$/.exec(String(dateStr || "").trim());
+    if (!m) return String(dateStr || "");
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yyyy = Number(m[3]);
+    if (!Number.isFinite(dd) || !Number.isFinite(mm) || !Number.isFinite(yyyy)) return String(dateStr || "");
+
+    const d = new Date(yyyy, mm - 1, dd);
+    try {
+      return new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(d);
+    } catch {
+      return d.toLocaleDateString();
+    }
+  };
 
   const openDayModal = (day) => {
     setActiveDay(day);
@@ -181,17 +202,31 @@ const ProfilePanel = () => {
       )}
 
       {!loadingHistory && !historyError && renderedHistory.length > 0 && (
-        <div className="list-group">
+        <div className="mt-3">
           {renderedHistory.map((day) => (
-            <div key={day.key} className="list-group-item d-flex justify-content-between align-items-center">
-              <div className="me-3">
-                <div className="fw-semibold">{day.date}</div>
-                <div className="text-muted" style={{ fontSize: "0.85rem" }}>
-                  {Array.isArray(day.locations) ? day.locations.length : 0} titik
+            <div key={day.key} className="d-flex align-items-center justify-content-between p-3 bg-white rounded-4 mb-3 user-card border">
+              <div className="d-flex align-items-center gap-3">
+                <div className="position-relative">
+                  <div className="avatar-bg rounded-circle d-flex align-items-center justify-content-center">
+                    <MapPin size={22} />
+                  </div>
+                </div>
+
+                <div>
+                  <span className="fw-bold text-dark">{formatDateId(day.date)}</span>
+                  <p className="text-muted mb-0" style={{ fontSize: "0.8rem" }}>
+                    {Array.isArray(day.locations) ? day.locations.length : 0} titik
+                  </p>
                 </div>
               </div>
-              <button type="button" className="btn btn-sm btn-primary" onClick={() => openDayModal(day)}>
-                View
+
+              <button
+                type="button"
+                className="btn btn-light rounded-pill shadow-sm px-3 d-flex align-items-center gap-1"
+                onClick={() => openDayModal(day)}
+              >
+                <MapPin size={16} />
+                <span>View</span>
               </button>
             </div>
           ))}
@@ -204,7 +239,7 @@ const ProfilePanel = () => {
             <div className="modal-dialog modal-xl modal-dialog-centered" role="document">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">History: {activeDay?.date || "-"}</h5>
+                  <h5 className="modal-title">History: {activeDay?.date ? formatDateId(activeDay.date) : "-"}</h5>
                   <button type="button" className="btn-close" aria-label="Close" onClick={closeModal} />
                 </div>
                 <div className="modal-body">
@@ -244,6 +279,22 @@ const ProfilePanel = () => {
           <div className="modal-backdrop fade show" onClick={closeModal} />
         </>
       )}
+
+      <style>{`
+        .avatar-bg {
+          width: 48px;
+          height: 48px;
+          background:#eef2ff;
+          transition: 0.3s;
+        }
+        .user-card:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 5px rgba(0,0,0,0.06) !important;
+        }
+        .user-card:hover .avatar-bg {
+          background:#dbe4ff;
+        }
+      `}</style>
     </>
   );
 };
