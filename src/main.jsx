@@ -4,13 +4,16 @@ import App from "./App.jsx";
 import { AuthProvider } from "./context/auth/AuthProvider.jsx";
 import { RealtimeProvider } from "./context/realtime/RealtimeProvider.jsx";
 import { UserProvider } from "./context/user/UserProvider.jsx";
+import { LocationProvider } from "./context/location/LocationProvider.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
       <RealtimeProvider>
         <UserProvider>
-          <App />
+          <LocationProvider>
+            <App />
+          </LocationProvider>
         </UserProvider>
       </RealtimeProvider>
     </AuthProvider>
