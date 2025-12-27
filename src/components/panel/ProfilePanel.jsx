@@ -239,7 +239,7 @@ const ProfilePanel = () => {
             <div className="modal-dialog modal-xl modal-dialog-centered" role="document">
               <div className="modal-content">
                 <div className="modal-header">
-                  <h5 className="modal-title">History: {activeDay?.date ? formatDateId(activeDay.date) : "-"}</h5>
+                  <h5 className="modal-title">{activeDay?.date ? formatDateId(activeDay.date) : "-"}</h5>
                   <button type="button" className="btn-close" aria-label="Close" onClick={closeModal} />
                 </div>
                 <div className="modal-body">
@@ -267,11 +267,6 @@ const ProfilePanel = () => {
                       </MapContainer>
                     </div>
                   )}
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={closeModal}>
-                    Close
-                  </button>
                 </div>
               </div>
             </div>
