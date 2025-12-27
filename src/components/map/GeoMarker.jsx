@@ -4,7 +4,7 @@ import { CircleMarker, useMap } from "react-leaflet";
 import { useRealtime } from "../../context/realtime/realtimeContext";
 
 const GeoMarker = () => {
-  const { sendMyLocation } = useRealtime();
+  const { sendMyLocation, isConnected } = useRealtime();
   const { coords } = useGeolocated({
     positionOptions: { enableHighAccuracy: true },
     watchPosition: true,
@@ -105,21 +105,22 @@ const GeoMarker = () => {
 
   // Broadcast my location to other users (server should rebroadcast)
   useEffect(() => {
-    if (!display || !sendMyLocation) return;
+    // Only broadcast once we have coords AND the realtime socket is connected.
+    // This avoids "first send" failing (ws not open yet) and then being throttled for 3 minutes.
+    if (!display || !sendMyLocation || !isConnected) return;
     const latitude = Number(display.latitude);
     const longitude = Number(display.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
     const now = Date.now();
     if (now - lastBroadcastAtRef.current < 3 * 60 * 1000) return;
-    lastBroadcastAtRef.current = now;
-
-    sendMyLocation({
+    const ok = sendMyLocation({
       latitude,
       longitude,
       ts: now,
     });
-  }, [display, sendMyLocation]);
+    if (ok) lastBroadcastAtRef.current = now;
+  }, [display, sendMyLocation, isConnected]);
 
   // Animate marker smoothly between updates. We update the Leaflet layer directly via ref
   // to avoid heavy React re-renders every animation frame. Hooks must be called before early returns.
