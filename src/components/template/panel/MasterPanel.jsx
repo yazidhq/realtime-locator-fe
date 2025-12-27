@@ -1,18 +1,30 @@
+import { useState } from "react";
 import { useAuth } from "../../../context/auth/authContext";
 import PanelButton from "../../button/PanelButton";
 import AuthForm from "../../auth/AuthForm";
-import SettingPanel from "../../panel/SettingPanel";
 import ProfilePanel from "../../panel/ProfilePanel";
-import { Settings, User, Users } from "lucide-react";
+import { LogOut, User, Users } from "lucide-react";
 import UsersPanel from "../../panel/UsersPanel";
 
 const MasterPanel = ({ activePanel, togglePanel }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, handleLogout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const doLogout = async () => {
+    if (!isAuthenticated || isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      const res = await handleLogout();
+      if (res?.ok) window.location.href = window.location.origin;
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const panelButtons = [
     { id: "profile", icon: <User /> },
     { id: "users", icon: <Users /> },
-    { id: "setting", icon: <Settings /> },
+    { id: "logout", icon: <LogOut /> },
   ];
 
   return (
@@ -35,11 +47,11 @@ const MasterPanel = ({ activePanel, togglePanel }) => {
         return (
           <PanelButton
             key={btn.id}
-            onClose={() => togglePanel(btn.id)}
+            onClose={() => (btn.id === "logout" ? doLogout() : togglePanel(btn.id))}
             value={btn.icon}
             top={top}
-            disabled={!isAuthenticated && btn.id !== "profile"}
-            active={Boolean(activePanel === btn.id)}
+            disabled={btn.id === "profile" ? false : btn.id === "logout" ? !isAuthenticated || isLoggingOut : !isAuthenticated}
+            active={btn.id === "logout" ? false : Boolean(activePanel === btn.id)}
             index={i}
           />
         );
@@ -56,12 +68,6 @@ const MasterPanel = ({ activePanel, togglePanel }) => {
           {activePanel === "users" && (
             <div className="p-4" style={{ color: "#1e3a5f" }}>
               <UsersPanel />
-            </div>
-          )}
-
-          {activePanel === "setting" && (
-            <div className="p-4" style={{ color: "#1e3a5f" }}>
-              <SettingPanel />
             </div>
           )}
         </div>
