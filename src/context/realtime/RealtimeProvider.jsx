@@ -6,11 +6,30 @@ const defaultWsBase = 'ws://localhost:3003/api/realtime_hub';
 
 const WS_BASE = import.meta.env.VITE_WS_BASE || defaultWsBase;
 
+const safeDecodeJwtPayload = (jwt) => {
+  try {
+    const token = String(jwt || "");
+    const parts = token.split(".");
+    const payloadPart = parts[1];
+    if (!payloadPart) return null;
+
+    // JWT uses base64url; atob expects base64.
+    let b64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padLen = (4 - (b64.length % 4)) % 4;
+    if (padLen) b64 = b64.padEnd(b64.length + padLen, "=");
+
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
+};
+
 export const RealtimeProvider = ({ children }) => {
   const { token, user } = useAuth();
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
   const attemptsRef = useRef(0);
+  const errorStreakRef = useRef(0);
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineMap, setOnlineMap] = useState(() => ({}));
@@ -67,11 +86,12 @@ export const RealtimeProvider = ({ children }) => {
 
       // Build ws url with token and user_id
       const url = `${WS_BASE}?token=${encodeURIComponent(token)}&user_id=${encodeURIComponent(user.id)}`;
+      const tokenPayload = token ? safeDecodeJwtPayload(token) : null;
       console.debug("realtime: connecting to", {
         base: WS_BASE,
         hasToken: !!token,
         userId: user?.id,
-        tokenExpiry: token ? JSON.parse(atob(token.split('.')[1]))?.exp : null
+        tokenExpiry: tokenPayload?.exp ?? null,
       });
 
       try {
@@ -82,6 +102,7 @@ export const RealtimeProvider = ({ children }) => {
 
         ws.onopen = () => {
           attemptsRef.current = 0;
+          errorStreakRef.current = 0;
           if (!mounted) return;
           setIsConnected(true);
           console.debug("realtime: socket open");
@@ -176,29 +197,42 @@ export const RealtimeProvider = ({ children }) => {
           // if this socket is current, close to trigger reconnect logic
           if (wsRef.current === currentWs) {
             try {
-              currentWs.close();
+              if (currentWs.readyState !== WebSocket.CLOSING && currentWs.readyState !== WebSocket.CLOSED) {
+                currentWs.close();
+              }
             } catch (e) {
               console.warn(e);
             }
           }
+
+          errorStreakRef.current = (errorStreakRef.current || 0) + 1;
           
           // Try to decode token to check expiry
           let tokenInfo = {};
           try {
             if (token) {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              const expiresIn = (payload.exp * 1000) - Date.now();
+              const payload = safeDecodeJwtPayload(token);
+              const exp = payload?.exp;
+              const expiresIn = typeof exp === "number" ? (exp * 1000) - Date.now() : null;
               tokenInfo = {
-                tokenExpiry: new Date(payload.exp * 1000).toISOString(),
+                tokenExpiry: typeof exp === "number" ? new Date(exp * 1000).toISOString() : null,
                 expiresInMs: expiresIn,
-                isExpired: expiresIn < 0
+                isExpired: typeof expiresIn === "number" ? expiresIn < 0 : null,
               };
             }
           } catch (e) {
            console.log(e)
           }
 
-          console.error("realtime: socket error - Backend server may not be running", {
+          const streak = errorStreakRef.current;
+          // Avoid noisy logs for transient failures; the client auto-retries.
+          if (streak < 3) return;
+
+          const baseMsg = "realtime: socket error";
+          const suggestion =
+            "WebSocket failed repeatedly. Backend may be down, auth may be rejected, or a proxy is blocking WS. Check backend logs for handshake errors.";
+
+          console.error(baseMsg, {
             message: err.message || "Unknown error",
             type: err.type,
             readyState: currentWs.readyState,
@@ -206,7 +240,8 @@ export const RealtimeProvider = ({ children }) => {
             serverUrl: WS_BASE,
             timestamp: new Date().toISOString(),
             tokenInfo,
-            suggestion: "Ensure backend is running on " + WS_BASE
+            errorStreak: streak,
+            suggestion,
           });
         };
       } catch (err) {
