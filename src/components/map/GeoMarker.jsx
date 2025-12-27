@@ -111,7 +111,7 @@ const GeoMarker = () => {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
     const now = Date.now();
-    if (now - lastBroadcastAtRef.current < 5000) return;
+    if (now - lastBroadcastAtRef.current < 3 * 60 * 1000) return;
     lastBroadcastAtRef.current = now;
 
     sendMyLocation({
