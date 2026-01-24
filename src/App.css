@@ -160,6 +160,150 @@ body,
   height: 100%;
 }
 
+/* -----------------------------
+   Admin dashboard layout
+   ----------------------------- */
+
+.admin-shell {
+  min-height: 100vh;
+  background: #f6f8fb;
+}
+
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  background: #0b1b2a;
+  color: #e8eef6;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 16px;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 6px 14px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+}
+
+.admin-brand-title {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.admin-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(232, 238, 246, 0.92);
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.admin-nav-link.active {
+  background: rgba(86, 156, 214, 0.22);
+  color: #ffffff;
+}
+
+.admin-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(246, 248, 251, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.admin-topbar-inner {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-page {
+  padding: 16px;
+}
+
+.admin-card {
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(16, 24, 40, 0.06);
+}
+
+.admin-kpi {
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #fbfcff);
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  padding: 16px;
+}
+
+.admin-kpi-label {
+  color: rgba(16, 24, 40, 0.65);
+  font-size: 0.9rem;
+}
+
+.admin-kpi-value {
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: -0.2px;
+  color: #0b1b2a;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.status-dot.online {
+  background: #22c55e;
+}
+
+.status-dot.offline {
+  background: #94a3b8;
+}
+
+@media (max-width: 991px) {
+  .admin-sidebar {
+    display: none;
+  }
+}
+
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
