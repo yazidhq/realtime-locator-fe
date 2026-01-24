@@ -11,7 +11,12 @@ const GeoMarker = () => {
     userDecisionTimeout: 5000,
   });
 
-  const lastBroadcastAtRef = useRef(0);
+  const lastSentRef = useRef({ ts: 0, latitude: null, longitude: null });
+
+  // Real-time tracking: keep the interval well below marker TTL (30s)
+  // so other clients/admin maps don't randomly miss someone who is stationary.
+  const MIN_SEND_INTERVAL_MS = 5_000;
+  const MIN_MOVE_METERS = 5;
 
   const map = useMap();
 
@@ -106,20 +111,26 @@ const GeoMarker = () => {
   // Broadcast my location to other users (server should rebroadcast)
   useEffect(() => {
     // Only broadcast once we have coords AND the realtime socket is connected.
-    // This avoids "first send" failing (ws not open yet) and then being throttled for 3 minutes.
     if (!display || !sendMyLocation || !isConnected) return;
     const latitude = Number(display.latitude);
     const longitude = Number(display.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
     const now = Date.now();
-    if (now - lastBroadcastAtRef.current < 3 * 60 * 1000) return;
-    const ok = sendMyLocation({
-      latitude,
-      longitude,
-      ts: now,
-    });
-    if (ok) lastBroadcastAtRef.current = now;
+    const last = lastSentRef.current || { ts: 0, latitude: null, longitude: null };
+
+    const timeOk = now - (last.ts || 0) >= MIN_SEND_INTERVAL_MS;
+    const movedOk =
+      Number.isFinite(Number(last.latitude)) && Number.isFinite(Number(last.longitude))
+        ? haversine([Number(last.latitude), Number(last.longitude)], [latitude, longitude]) >= MIN_MOVE_METERS
+        : true; // first send
+
+    if (!timeOk && !movedOk) return;
+
+    const ok = sendMyLocation({ latitude, longitude, ts: now });
+    if (ok) {
+      lastSentRef.current = { ts: now, latitude, longitude };
+    }
   }, [display, sendMyLocation, isConnected]);
 
   // Animate marker smoothly between updates. We update the Leaflet layer directly via ref
