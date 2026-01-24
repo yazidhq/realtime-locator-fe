@@ -20,16 +20,30 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>
 );
 
-// Register service worker (only in supported environments)
+// Service worker:
+// - DEV: ensure no SW is controlling the app (prevents MIME-type/HMR issues)
+// - PROD: register SW normally
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+  if (import.meta.env.DEV) {
+    // Clean up any previously-registered SW from production builds.
     navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => {
-        console.log("Service worker registered:", reg.scope);
-      })
-      .catch((err) => {
-        console.warn("Service worker registration failed:", err);
+      .getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .catch(() => {
+        // ignore
       });
-  });
+  }
+
+  if (import.meta.env.PROD) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          console.log("Service worker registered:", reg.scope);
+        })
+        .catch((err) => {
+          console.warn("Service worker registration failed:", err);
+        });
+    });
+  }
 }
