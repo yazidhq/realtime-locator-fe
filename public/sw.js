@@ -37,6 +37,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Avoid interfering with Vite dev server and module/HMR requests.
+  // Even though SW isn't registered in DEV anymore, this also protects
+  // users who still have an older SW controlling the page.
+  const p = url.pathname;
+  if (
+    p.startsWith("/src/") ||
+    p.startsWith("/@vite/") ||
+    p.startsWith("/@react-refresh") ||
+    p.startsWith("/node_modules/") ||
+    p.startsWith("/@fs/")
+  ) {
+    return;
+  }
+
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
@@ -58,6 +72,13 @@ self.addEventListener("fetch", (event) => {
           if (req.mode === "navigate") {
             return caches.match("/index.html");
           }
+
+          // For non-navigation requests, return a safe fallback response
+          // instead of undefined (which can break module loading).
+          return new Response("", {
+            status: 504,
+            headers: { "Content-Type": "text/plain" },
+          });
         });
     })
   );
