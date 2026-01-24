@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/authContext";
 import RealtimeContext from "./realtimeContext";
 
@@ -30,12 +30,80 @@ export const RealtimeProvider = ({ children }) => {
   const reconnectRef = useRef(null);
   const attemptsRef = useRef(0);
   const errorStreakRef = useRef(0);
+  const toastTimersRef = useRef(new Map());
 
   const [isConnected, setIsConnected] = useState(false);
   const [onlineMap, setOnlineMap] = useState(() => ({}));
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [locationsByUserId, setLocationsByUserId] = useState(() => ({}));
+  const [messageStatusById, setMessageStatusById] = useState(() => ({}));
+  const [toasts, setToasts] = useState(() => []);
   const onlineUsersUpdateRef = useRef(null);
+
+  const makeClientMsgId = () => {
+    try {
+      if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+    } catch {
+      // ignore
+    }
+    return `m_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  };
+
+  const removeToast = useCallback((id) => {
+    const key = String(id || "");
+    if (!key) return;
+
+    const t = toastTimersRef.current.get(key);
+    if (t) {
+      clearTimeout(t);
+      toastTimersRef.current.delete(key);
+    }
+
+    setToasts((prev) => prev.filter((x) => String(x?.id) !== key));
+  }, []);
+
+  const pushToast = useCallback(({ title, message, variant = "info", ttlMs = 6000, meta = null }) => {
+    const id = makeClientMsgId();
+    const toast = {
+      id,
+      title: String(title || "Notification"),
+      message: String(message || ""),
+      variant: String(variant || "info"),
+      ts: Date.now(),
+      meta,
+    };
+
+    setToasts((prev) => {
+      const next = [toast, ...(Array.isArray(prev) ? prev : [])];
+      // Avoid unbounded growth
+      return next.slice(0, 5);
+    });
+
+    if (ttlMs && Number(ttlMs) > 0) {
+      const timeoutId = setTimeout(() => {
+        removeToast(id);
+      }, Number(ttlMs));
+      toastTimersRef.current.set(id, timeoutId);
+    }
+
+    return id;
+  }, [removeToast]);
+
+  const applyOnlineUsersList = useCallback((userIds) => {
+    const arr = Array.isArray(userIds)
+      ? userIds
+      : userIds && typeof userIds[Symbol.iterator] === "function"
+        ? Array.from(userIds)
+        : [];
+
+    const ids = new Set(arr.map((id) => String(id)).filter(Boolean));
+    setOnlineUserIds(ids);
+    setOnlineMap(() => {
+      const next = {};
+      for (const id of ids) next[id] = true;
+      return next;
+    });
+  }, []);
 
   const sendMyLocation = (payload) => {
     const ws = wsRef.current;
@@ -58,6 +126,71 @@ export const RealtimeProvider = ({ children }) => {
     }
   };
 
+  // Merge a snapshot of latest locations (e.g. from REST) into realtime state.
+  // Does not overwrite newer ws updates.
+  const upsertLocationsSnapshot = useCallback((snapshot) => {
+    if (!snapshot || typeof snapshot !== "object") return;
+
+    setLocationsByUserId((prev) => {
+      const next = { ...(prev || {}) };
+      for (const [uidRaw, loc] of Object.entries(snapshot)) {
+        const uid = String(uidRaw || "");
+        if (!uid) continue;
+
+        const lat = Number(loc?.latitude);
+        const lng = Number(loc?.longitude);
+        const updatedAt = Number(loc?.updatedAt ?? loc?.ts ?? 0);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+        const prevUpdatedAt = Number(next?.[uid]?.updatedAt ?? 0);
+        if (!prevUpdatedAt || (updatedAt && updatedAt >= prevUpdatedAt)) {
+          next[uid] = {
+            latitude: lat,
+            longitude: lng,
+            updatedAt: updatedAt || Date.now(),
+          };
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const sendMessageToUser = ({ toUserId, text }) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { ok: false, error: "socket_not_connected" };
+
+    const to = String(toUserId || "").trim();
+    const body = String(text || "").trim();
+    if (!to) return { ok: false, error: "to_user_required" };
+    if (!body) return { ok: false, error: "message_required" };
+
+    // Backend contract (admin -> user):
+    // { type: 'user_message', user_receiver_id: '<uuid>', message: '<text>' }
+    // We still generate a local client id for UI delivery state.
+    const msgId = makeClientMsgId();
+    const msg = {
+      type: "user_message",
+      user_receiver_id: to,
+      message: body,
+    };
+
+    try {
+      ws.send(JSON.stringify(msg));
+      setMessageStatusById((prev) => ({
+        ...prev,
+        [msgId]: { status: "sent", toUserId: to, updatedAt: Date.now() },
+      }));
+      return { ok: true, messageId: msgId };
+    } catch (e) {
+      console.warn("realtime: sendMessageToUser failed", e);
+      setMessageStatusById((prev) => ({
+        ...prev,
+        [msgId]: { status: "failed", toUserId: to, updatedAt: Date.now() },
+      }));
+      return { ok: false, error: e?.message || String(e) };
+    }
+  };
+
   useEffect(() => {
     // If no token, ensure socket closed and state cleared
     if (!token || !user) {
@@ -76,6 +209,7 @@ export const RealtimeProvider = ({ children }) => {
     }
 
     let mounted = true;
+    const timers = toastTimersRef.current;
 
     const connect = () => {
       // avoid creating multiple concurrent sockets
@@ -124,6 +258,26 @@ export const RealtimeProvider = ({ children }) => {
           try {
             const data = JSON.parse(ev.data);
             console.debug("realtime: message", data);
+
+            // Incoming user messages (admin -> seller)
+            // Backend: { type: 'user_message', user_receiver_id, message, ... }
+            if (data && data.type === "user_message") {
+              const receiver = String(data.user_receiver_id || data.userId || data.user_id || "");
+              const currentId = String(user?.id || "");
+              // If backend broadcasts to everyone, ensure only the receiver shows toast.
+              if (!receiver || !currentId || receiver === currentId) {
+                const msg = String(data.message || data.body || "").trim();
+                if (msg) {
+                  pushToast({
+                    title: "New Message",
+                    message: msg,
+                    variant: "primary",
+                    ttlMs: 8000,
+                    meta: data,
+                  });
+                }
+              }
+            }
             
             // Handle user status updates
             if (data && data.type === "user_status" && data.user_id) {
@@ -148,9 +302,8 @@ export const RealtimeProvider = ({ children }) => {
             
             // Handle list of all online users (if server sends it on connect)
             if (data && data.type === "online_users_list" && Array.isArray(data.user_ids)) {
-              const ids = new Set(data.user_ids.map(id => String(id)));
-              console.log("realtime: received online users list", Array.from(ids));
-              setOnlineUserIds(ids);
+              console.log("realtime: received online users list", data.user_ids);
+              applyOnlineUsersList(data.user_ids);
             }
 
             // Handle location updates broadcasted by server
@@ -170,6 +323,31 @@ export const RealtimeProvider = ({ children }) => {
                   };
                   return next;
                 });
+              }
+            }
+
+            // Message delivery status (best-effort; depends on backend protocol)
+            // Accept a few common shapes:
+            // - { type: 'message_status', message_id, status }
+            // - { type: 'admin_message_ack', message_id, status }
+            // - { type: 'message_delivery', msg_id, status }
+            if (data && typeof data === "object") {
+              const t = String(data.type || "");
+              const statusTypes = new Set(["message_status", "admin_message_ack", "message_delivery", "delivery_status"]);
+              if (statusTypes.has(t)) {
+                const id = String(data.message_id || data.msg_id || data.client_msg_id || data.id || "");
+                const status = String(data.status || data.state || "").toLowerCase();
+                if (id) {
+                  setMessageStatusById((prev) => ({
+                    ...prev,
+                    [id]: {
+                      ...(prev[id] || {}),
+                      status: status || prev[id]?.status || "sent",
+                      updatedAt: Date.now(),
+                      raw: data,
+                    },
+                  }));
+                }
               }
             }
           } catch (e) {
@@ -266,16 +444,35 @@ export const RealtimeProvider = ({ children }) => {
           console.warn(e);
         }
       }
+
+      try {
+        for (const t of timers.values()) clearTimeout(t);
+        timers.clear();
+      } catch {
+        // ignore
+      }
     };
-  }, [token, user]);
+  }, [token, user, pushToast, applyOnlineUsersList]);
 
   const value = {
     isConnected,
     onlineMap,
     onlineUserIds,
+    applyOnlineUsersList,
     locationsByUserId,
+    upsertLocationsSnapshot,
+    messageStatusById,
+    toasts,
     sendMyLocation,
-    getOnline: (userId) => !!onlineMap[userId],
+    sendMessageToUser,
+    pushToast,
+    removeToast,
+    getOnline: (userId) => {
+      const id = String(userId || "");
+      if (!id) return false;
+      if (Object.prototype.hasOwnProperty.call(onlineMap || {}, id)) return !!onlineMap[id];
+      return !!onlineUserIds?.has?.(id);
+    },
     setOnlineUsersRefreshCallback: (callback) => {
       onlineUsersUpdateRef.current = callback;
     },

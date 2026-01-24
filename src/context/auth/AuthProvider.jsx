@@ -32,11 +32,23 @@ export const AuthProvider = ({ children }) => {
       const access = data.access_token;
       if (!access) throw new Error("Token not provided by server");
 
+      const rawId =
+        data?.id ??
+        data?.user_id ??
+        data?.userId ??
+        data?.uuid ??
+        data?.user?.id ??
+        data?.user?.user_id ??
+        data?.user?.userId ??
+        data?.user?.uuid ??
+        null;
+
       const userObj = {
-        id: data.id ?? null,
-        name: data.name ?? null,
-        email: data.email ?? null,
-        phone_number: data.phone_number ?? null,
+        id: rawId != null ? String(rawId) : null,
+        name: data?.name ?? data?.user?.name ?? null,
+        email: data?.email ?? data?.user?.email ?? null,
+        username: data?.username ?? data?.user?.username ?? null,
+        phone_number: data?.phone_number ?? data?.user?.phone_number ?? null,
       };
 
       setToken(access);
