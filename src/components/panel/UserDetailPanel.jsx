@@ -46,24 +46,40 @@ const UserDetailPanel = ({ user, onClose }) => {
       <style>{`
         .user-detail-panel {
           position: fixed;
-          top: 0;
-          margin-top: 10px;
+          top: 12px;
           border-radius: 10px;
           right: calc(min(500px, 90vw) + 16px);
-          height: 30vh;
+          height: auto;
+          max-height: calc(100vh - 24px);
           width: min(350px, 90vw);
           background: #fff;
           box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
           padding: 16px;
           z-index: 1050;
           transition: transform 220ms ease, opacity 180ms ease;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
         }
         .panel-header {
           border-bottom: 1px solid #eef2ff;
           padding-bottom: 8px;
         }
         .panel-body {
-          padding-bottom: 40px;
+          padding-bottom: 8px;
+          overflow-y: auto;
+        }
+
+        @media (max-width: 576px) {
+          .user-detail-panel {
+            left: 12px;
+            right: 12px;
+            top: auto;
+            bottom: 12px;
+            width: auto;
+            max-height: 70vh;
+            border-radius: 16px;
+          }
         }
       `}</style>
     </div>

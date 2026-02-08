@@ -1,4 +1,4 @@
-import { CircleUser, MapPin } from "lucide-react";
+import { CircleUser, Eye } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../../context/auth/authContext";
 import { useUser } from "../../context/user/userContext";
@@ -154,9 +154,9 @@ const UsersPanel = () => {
                 </div>
               </div>
 
-              <button className="btn btn-light rounded-pill shadow-sm px-3 d-flex align-items-center gap-1">
-                <MapPin size={16} />
-                <span className="d-none d-md-inline">Locate</span>
+              <button className="btn btn-light rounded-pill shadow-sm px-3 d-flex align-items-center gap-1" type="button">
+                <Eye size={16} />
+                <span className="d-none d-md-inline">Detail</span>
               </button>
             </div>
           ))
