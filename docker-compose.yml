@@ -1,0 +1,8 @@
+services:
+  fe-realtime-locator:
+    image: registry.yazidhq.my.id:444/skripsi/fe-realtime-locator:latest
+    container_name: fe-realtime-locator
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
