@@ -6,6 +6,32 @@ const defaultWsBase = 'ws://localhost:3003/api/realtime_hub';
 
 const WS_BASE = import.meta.env.VITE_WS_BASE || defaultWsBase;
 
+const normalizeWsBase = (raw) => {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+
+  // Already ws(s)
+  if (/^wss?:\/\//i.test(s)) {
+    // Avoid mixed content when the page is HTTPS
+    if (globalThis.location?.protocol === "https:" && /^ws:\/\//i.test(s)) {
+      return s.replace(/^ws:\/\//i, "wss://");
+    }
+    return s;
+  }
+
+  // Convert http(s) -> ws(s)
+  if (/^https?:\/\//i.test(s)) {
+    return s.replace(/^http/i, "ws");
+  }
+
+  // Relative path -> use current origin
+  const origin = globalThis.location?.origin || "";
+  if (!origin) return s;
+
+  const u = new URL(s.startsWith("/") ? s : `/${s}`, origin);
+  return u.toString().replace(/^http/i, "ws");
+};
+
 const safeDecodeJwtPayload = (jwt) => {
   try {
     const token = String(jwt || "");
@@ -219,10 +245,14 @@ export const RealtimeProvider = ({ children }) => {
       }
 
       // Build ws url with token and user_id
-      const url = `${WS_BASE}?token=${encodeURIComponent(token)}&user_id=${encodeURIComponent(user.id)}`;
+      const base = normalizeWsBase(WS_BASE);
+      const wsUrl = new URL(base);
+      wsUrl.searchParams.set("token", token);
+      wsUrl.searchParams.set("user_id", user.id);
+      const url = wsUrl.toString();
       const tokenPayload = token ? safeDecodeJwtPayload(token) : null;
       console.debug("realtime: connecting to", {
-        base: WS_BASE,
+        base,
         hasToken: !!token,
         userId: user?.id,
         tokenExpiry: tokenPayload?.exp ?? null,
@@ -301,9 +331,10 @@ export const RealtimeProvider = ({ children }) => {
             }
             
             // Handle list of all online users (if server sends it on connect)
-            if (data && data.type === "online_users_list" && Array.isArray(data.user_ids)) {
-              console.log("realtime: received online users list", data.user_ids);
-              applyOnlineUsersList(data.user_ids);
+            // Backend sends: { type: 'online_users_list', users: ['uuid', ...] }
+            if (data && data.type === "online_users_list" && Array.isArray(data.users)) {
+              console.log("realtime: received online users list", data.users);
+              applyOnlineUsersList(data.users);
             }
 
             // Handle location updates broadcasted by server
